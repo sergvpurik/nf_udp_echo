@@ -171,7 +171,7 @@ static inline int do_echo_udp(struct sk_buff *skb)
 		sysfs_format_mac(buf3, skb->dev->dev_addr, ETH_ALEN);
 		//sysfs_format_mac(buf3, skb->dev->perm_addr, ETH_ALEN);
 
-		printk("...ethernet at [%i]\n...src %s...dst %s...dev %s",
+        printk("...ethernet at [%zd]\n...src %s...dst %s...dev %s",
 				(u8 *)ethh - (u8 *)skb->data, buf1, buf2, buf3);
 	}
 	else
@@ -184,7 +184,7 @@ static inline int do_echo_udp(struct sk_buff *skb)
         if (is_echo_port(udph->dest))
 	{
 #if DEBUG_MODULE
-		printk("... udp at [%i]: %hu -> %hu len %hu\n", (char*) udph - (char*) iph,
+        printk("... udp at [%zd]: %hu -> %hu len %hu\n", (char*) udph - (char*) iph,
 				ntohs(udph->source), ntohs(udph->dest), ntohs(udph->len));
 #endif
 
@@ -279,7 +279,7 @@ static unsigned int udp_hook(unsigned int hooknum,
 #if DEBUG_MODULE
 	printk("skb %p len %u data_len %u\n", skb, skb->len, skb->data_len);
 
-	printk("...IP at [%i] in %s out %s %pI4 -> %pI4 proto %hhu\n",
+    printk("...IP at [%zd] in %s out %s %pI4 -> %pI4 proto %hhu\n",
 			(u8 *)iph - (u8 *)skb->data,
 			in->name, out->name, &(iph->saddr), &(iph->daddr), iph->protocol);
 #endif

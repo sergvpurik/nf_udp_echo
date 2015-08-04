@@ -9,6 +9,7 @@
 
 #include "nf_udp_echo.h"
 
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/stddef.h>
 #include <linux/proc_fs.h>
@@ -85,7 +86,7 @@ static ssize_t ports_write(struct file *file, const char *user_buf, size_t count
 
 	int res = 0;
 
-	printk( KERN_INFO "%s ports_write pos %lld, user data %zu, buff size %zu\n",
+    printk( KERN_INFO "%s ports_write pos %lld, user data %zu, buff size %u\n",
 			MODULE_NAME, (*ppos), count, PORTS_BUFF_SIZE);
 
 	// check buffer size
@@ -112,7 +113,6 @@ ports_write_end:
 
 static const struct file_operations ports_fops =
 { .owner = THIS_MODULE, .read = ports_read, .write = ports_write };
-
 
 #if UDP_ECHO_FEATURE_STATUS
 static ssize_t status_read(struct file *file, char *user_buf, size_t count, loff_t *ppos)
@@ -189,33 +189,41 @@ int proc_fs_init(void)
 	}
 	printk(KERN_INFO "%s created /proc/%s\n", MODULE_NAME, BASE_DIR_NAME);
 
-
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 10, 0)
 	ports_file = create_proc_entry(PORTS_FILE_NAME, 0644, base_dir);
-	if (ports_file == NULL)
-	{
-		ret = -ENOMEM;
-		printk(KERN_ERR "can't create /proc/%s/%s\n", BASE_DIR_NAME,
-			   PORTS_FILE_NAME);
-		goto on_error_exit;
-	}
-	ports_file->uid = ports_file->gid = 0;
-	ports_file->proc_fops = &ports_fops;
+    if (ports_file != NULL)
+    {
+        ports_file->uid = ports_file->gid = 0;
+        ports_file->proc_fops = &ports_fops;
+    }
+#else
+    ports_file = proc_create(PORTS_FILE_NAME, 0644, base_dir, &ports_fops);
+#endif
+    if (ports_file == NULL)
+    {
+        ret = -ENOMEM;
+        printk(KERN_ERR "can't create /proc/%s/%s\n", BASE_DIR_NAME, PORTS_FILE_NAME);
+        goto on_error_exit;
+    }
 
 #if UDP_ECHO_FEATURE_STATUS
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 10, 0)
 	status_file = create_proc_entry(STATUS_FILE_NAME, 0644, base_dir);
-	if (status_file == NULL)
-	{
-		ret = -ENOMEM;
-		printk(KERN_ERR "can't create /proc/%s/%s\n", BASE_DIR_NAME,
-				STATUS_FILE_NAME);
-		goto on_error_exit;
-	}
 	status_file->uid = ports_file->gid = 0;
 	status_file->proc_fops = &status_fops;
+#else
+    status_file = proc_create(STATUS_FILE_NAME, 0644, base_dir, &status_fops);
+#endif
+    if (status_file == NULL)
+    {
+        ret = -ENOMEM;
+        printk(KERN_ERR "can't create /proc/%s/%s\n", BASE_DIR_NAME,
+                STATUS_FILE_NAME);
+        goto on_error_exit;
+    }
 #endif // UDP_ECHO_FEATURE_STATUS
 
 	return 0;
-
 on_error_exit:
 	printk(KERN_ERR "%s proc_fs init error %i\n", MODULE_NAME, ret);
 	return ret;
